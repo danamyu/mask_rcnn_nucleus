@@ -7,7 +7,7 @@ set -e
 echo Cloning repo...
 git config --global credential.helper '!aws codecommit credential-helper $@'
 git config --global credential.UseHttpPath true
-git clone https://github.com/matterport/Mask_RCNN.git ##TODO: update to your own github repo
+git clone https://github.com/danamyu/mask_rcnn_nucleus.git ##TODO: update to your own github repo
 
 # Copy datasets from s3
 echo Copying dataset...
