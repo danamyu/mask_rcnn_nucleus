@@ -42,6 +42,7 @@ import datetime
 import numpy as np
 import skimage.io
 from imgaug import augmenters as iaa
+import csv
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("mask_rcnn_nucleus")
@@ -60,7 +61,8 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # through the command line argument --logs
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
-# Results directory
+
+# Results directory for predictions
 # Save submission files here
 RESULTS_DIR = os.path.join(ROOT_DIR, "results/nucleus/")
 
@@ -376,16 +378,25 @@ def detect(model, dataset_dir, subset):
     dataset.prepare()
     # Load over images
     submission = []
+    BBs = []
     for image_id in dataset.image_ids:
         # Load image and run detection
         image = dataset.load_image(image_id)
         # Detect objects
         r = model.detect([image], verbose=0)[0] #TODO: print r....
+        #print('r shape', r.shape)
+        #print('r', r)
+        number_instances = r['rois'].shape[0]
+        #print('r-rois',r['rois'])
+        #print('number instances', number_instances)
         # Encode image to RLE. Returns a string of multiple lines
         source_id = dataset.image_info[image_id]["id"]
         rle = mask_to_rle(source_id, r["masks"], r["scores"])
         submission.append(rle)
-        # Save image with masks
+        boxes = r['rois'].tolist()
+        BBs.append((source_id, number_instances, boxes))
+        #print('line 0 BBs',BBs[0])
+        # Save image with masks TODO: uncomment when done testing
         visualize.display_instances(
             image, r['rois'], r['masks'], r['class_ids'],
             dataset.class_names, r['scores'],
@@ -393,13 +404,20 @@ def detect(model, dataset_dir, subset):
             title="Predictions")
         plt.savefig("{}/{}.png".format(submit_dir, dataset.image_info[image_id]["id"]))
 
-    # Save to csv file
+    # Save to csv file TODO: uncomment when done testing
     submission = "ImageId,EncodedPixels\n" + "\n".join(submission)
     file_path = os.path.join(submit_dir, "submit.csv")
     with open(file_path, "w") as f:
-        f.write(submission)
+       f.write(submission)
     print("Saved to ", submit_dir)
 
+    # Save BB results to file
+    file_path = os.path.join(submit_dir, "BB_results.csv")
+    with open(file_path, "w", newline='') as f:
+        csv_writer = csv.writer(f,delimiter=',',quoting=csv.QUOTE_MINIMAL)
+        for i in range(0,len(BBs)):
+            csv_writer.writerow(BBs[i])
+    print("Saved to ", submit_dir )
 
 ############################################################
 #  Command Line
@@ -420,17 +438,17 @@ if __name__ == '__main__':
                         metavar="/path/to/dataset/",
                         help='Root directory of the dataset')
     parser.add_argument('--weights', required=True,
-                        metavar="/path/to/weights.h5",
-                        help="Path to weights .h5 file or 'coco'")
+                       metavar="/path/to/weights.h5",
+                       help="Path to weights .h5 file or 'coco'")
     parser.add_argument('--logs', required=False,
-                        default=DEFAULT_LOGS_DIR,
-                        metavar="/path/to/logs/",
-                        help='Logs and checkpoints directory (default=logs/)')
+                       default=DEFAULT_LOGS_DIR,
+                       metavar="/path/to/logs/",
+                       help='Logs and checkpoints directory (default=logs/)')
     parser.add_argument('--subset', required=False,
                         metavar="Dataset sub-directory",
                         help="Subset of dataset to run prediction on")
     args = parser.parse_args()
-    print('args:', args.weights)
+    #print('args:', args.weights)
 
     # Validate arguments
     if args.command == "train":
